@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Map — Hospital Central{% endblock %}
+{% block content %}
+
+<h1>Marker map</h1>
+<p class="sub">
+  The robot's map of the floor. <b>Nodes are markers, links mean "these two were
+  seen in the same camera frame"</b> — so a link is somewhere the robot can get
+  from one to the other. There are no coordinates and no floor plan: this is a
+  topological map, not SLAM.
+</p>
+
+<section class="card">
+  <h2>1 · Teach it</h2>
+  <p class="hint">
+    On the Pi, run the teach loop, then drive the robot round the course with the
+    <a href="/teleop">teleop panel</a> — or just carry it. Walk it past every
+    marker, and pause where two markers are both in view; that is what creates a
+    link.
+  </p>
+  <pre class="cmd">sudo systemctl stop medic-nav
+cd ~/pi-deploy &amp;&amp; .venv/bin/python -m medic.nav --teach</pre>
+  <p class="hint">
+    The <code>stop</code> line matters: only one process can hold the camera, so
+    teach mode will not start while the nav service is running.
+  </p>
+  <p class="hint">
+    nav sends <b>no drive commands</b> in this mode — you are the navigation.
+    Stop it with Ctrl-C when you have covered the floor, then put nav back:
+  </p>
+  <pre class="cmd">sudo systemctl start medic-nav</pre>
+</section>
+
+<!-- The "ask the human" half of teach mode. -->
+<section class="card" id="unnamed-card" style="display:none">
+  <h2>2 · Name the new markers <small id="unnamed-count"></small></h2>
+  <p class="hint">
+    The robot found these but does not know what they are. Name a
+    <b>station</b> for anywhere you can dispatch a delivery to (a room, the
+    pharmacy); name a <b>waypoint</b> for corners and corridor markers that only
+    exist to bridge the gaps.
+  </p>
+  <div id="unnamed-list"></div>
+</section>
+
+<section class="card">
+  <h2>3 · What it has learned</h2>
+  <p class="hint" id="map-summary">…</p>
+  <div id="map-table"></div>
+</section>
+
+<section class="card">
+  <h2>4 · Test a route</h2>
+  <p class="hint">
+    Ask the map to plan between any two markers. This is exactly the search a
+    dispatch uses, so if it says "no known route" the robot cannot make that
+    trip yet — teach the missing link.
+  </p>
+  <div class="routebar">
+    <label>from <select id="route-from"></select></label>
+    <label>to <select id="route-to"></select></label>
+    <button id="route-go">Plan</button>
+  </div>
+  <p id="route-result" class="hint">…</p>
+</section>
+
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Dispatch{% endblock %}
+{% block content %}
+<!--
+  dispatch.html — screen 2: dispatch form.
+
+  Flow: pick a patient (GET /api/v1/patients) -> see their prescription ->
+  choose units / cold item / destination marker / robot -> POST /api/v1/tasks
+  -> track the resulting task live (GET /api/v1/tasks). All field names
+  match docs/http-api-v1.md's dispatch payload exactly:
+    {patient_id, units, cold_item, destination_marker, robot_id} -> {task_id}
+
+  Marker IDs are per markers/README.md: 10 = Pharmacy, 20 = Ward,
+  15 = corner waypoint. Deliveries go to the Ward, so 20 is the default.
+-->
+<h1>Dispatch a delivery</h1>
+
+<div class="row">
+    <div class="panel">
+        <h2>New task</h2>
+        <form id="dispatch-form">
+            <div class="form-grid">
+                <div>
+                    <label for="dispatch-patient">Patient</label>
+                    <select id="dispatch-patient">
+                        <option value="">Loading patients…</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="dispatch-robot">Robot</label>
+                    <input type="text" id="dispatch-robot" list="robot-id-list" placeholder="medic-01">
+                </div>
+                <div>
+                    <label for="dispatch-units">Units (candy count)</label>
+                    <input type="number" id="dispatch-units" min="1" step="1" value="1">
+                </div>
+                <div>
+                    <label for="dispatch-destination">Destination</label>
+                    <!-- Filled from /api/v1/map with the stations taught during
+                         the teach run. Stays hidden until there is a map, so a
+                         fresh robot still shows the plain marker-number box
+                         below rather than an empty useless dropdown. -->
+                    <select id="dispatch-destination" class="hidden">
+                        <option value="">Loading destinations…</option>
+                    </select>
+                    <input type="number" id="dispatch-marker" step="1" value="20"
+                           aria-label="Destination marker ID">
+                    <p class="hint" id="dispatch-route">…</p>
+                </div>
+                <div class="check-row">
+                    <label for="dispatch-cold">
+                        <input type="checkbox" id="dispatch-cold">
+                        Include cold item (chilled bead pouch)
+                    </label>
+                </div>
+            </div>
+
+            <p class="muted" id="dispatch-prescription">Pick a patient to see their prescription.</p>
+
+            <div class="form-actions">
+                <button type="submit" id="dispatch-submit">Dispatch</button>
+                <span id="dispatch-result" class="form-msg hidden"></span>
+            </div>
+        </form>
+    </div>
+
+    <div class="panel" id="dispatch-live">
+        <h2>Live task</h2>
+        <p id="dispatch-live-body" class="muted">No task dispatched yet this page load.</p>
+        <ol class="progress-list" id="dispatch-progress"></ol>
+        <p class="muted" style="margin-top:10px;">
+            <code>refused</code> or <code>aborted</code> shows as a single red step —
+            those are demoed on purpose (wrong-patient refusal, R3/R4).
+        </p>
+    </div>
+</div>
+
+<div class="panel panel-flush">
+    <div class="table-wrap">
+        <table class="data-table">
+            <caption><h2 style="margin:0;">Recent tasks</h2></caption>
+            <thead>
+                <tr>
+                    <th>Task</th>
+                    <th>Robot</th>
+                    <th>Patient</th>
+                    <th>State</th>
+                    <th>Marker</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody id="dispatch-recent-body">
+                <tr><td colspan="6" class="empty-note">Loading…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

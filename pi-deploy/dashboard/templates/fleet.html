@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Fleet{% endblock %}
+{% block content %}
+<!--
+  fleet.html — screen 1: fleet/status.
+
+  Renders N robots from GET /api/v1/fleet, keyed by robot_id. NEVER assume
+  there is exactly one robot — the response's "robots" array can be any
+  length, including zero before task_bridge.py has posted anything yet.
+
+  Per robot (docs/http-api-v1.md): state, active override (ovr), last-seen
+  age, online/offline, latest cold-box temp, current task. All rendering
+  happens in app.js's initFleet(); this template only provides the empty
+  #fleet-root container it fills in.
+-->
+<h1>Fleet</h1>
+<p class="muted">
+    Live status for every robot that has reported to this dashboard. A card
+    appears here the first time a robot's <code>robot_id</code> shows up on
+    <code>/api/v1/fleet</code> — nothing is hardcoded to a single unit.
+</p>
+
+<div id="fleet-root" class="fleet-grid">
+    <div class="empty-note">Loading fleet status…</div>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+# Project MEDIC — task_bridge.py (dashboard <-> ESP32 serial bridge)
+#
+# TEMPLATE — see medic-dashboard.service's header comment for how the
+# @TOKEN@ placeholders get filled in by ../install.sh.
+#
+# Starts after the dashboard: task_bridge polls the dashboard for the
+# active task and relays MCU telemetry back to it, so it needs the
+# dashboard's API to exist (docs/http-api-v1.md). It does NOT need the
+# ESP32 to be plugged in — medic/common.py's SerialLink is a dumb pipe
+# that logs once and keeps retrying in the background if the port is
+# missing (the ESP32 is not wired up yet on this build; that is a
+# supported state, not a fault).
+#
+# BENCH TEST (after ./install.sh has installed it):
+#   sudo systemctl status medic-bridge.service
+#   journalctl -u medic-bridge.service -f
+
+[Unit]
+Description=Project MEDIC - task_bridge (dashboard <-> MCU serial bridge)
+Documentation=file://@INSTALL_DIR@/README.md
+After=network.target medic-dashboard.service
+Wants=medic-dashboard.service
+
+[Service]
+Type=simple
+User=@RUN_USER@
+Group=@RUN_GROUP@
+# dialout: Debian's USB-serial device nodes (/dev/ttyUSB*, /dev/ttyACM*,
+# /dev/serial/by-id/...) are group-owned "dialout" — needed once the
+# ESP32 is actually plugged in.
+SupplementaryGroups=dialout
+WorkingDirectory=@INSTALL_DIR@
+EnvironmentFile=@INSTALL_DIR@/medic.env
+ExecStart=@INSTALL_DIR@/.venv/bin/python -m medic.task_bridge
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=medic-bridge
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

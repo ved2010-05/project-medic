@@ -1,0 +1,43 @@
+# Project MEDIC — ears.py (event-only sound alerting)
+#
+# TEMPLATE — see medic-dashboard.service's header comment for how the
+# @TOKEN@ placeholders get filled in by ../install.sh.
+#
+# Starts after the dashboard and bridge, same as nav (pi-deploy's task
+# spec: "dashboard first, then bridge, then nav and ears"). ears.py only
+# ever posts {robot_id, type, label, confidence, ts} sound_alert events
+# to the dashboard (ARCHITECTURE.md invariant §0.5) — it never opens a
+# file, never buffers audio beyond the live analysis window, never
+# writes a .wav. If that ever changes, it is a bug, not a feature.
+#
+# BENCH TEST (after ./install.sh has installed it):
+#   sudo systemctl status medic-ears.service
+#   journalctl -u medic-ears.service -f
+#   (clap near the mic; a sound_alert event should appear in the
+#   dashboard's audit log within ~1 s per pi-deploy/DESIGN.md's bench test)
+
+[Unit]
+Description=Project MEDIC - ears (event-only sound alerting, never records)
+Documentation=file://@INSTALL_DIR@/README.md
+After=network.target medic-dashboard.service medic-bridge.service
+Wants=medic-dashboard.service medic-bridge.service
+
+[Service]
+Type=simple
+User=@RUN_USER@
+Group=@RUN_GROUP@
+# audio: PortAudio/ALSA capture devices are group-owned "audio" on
+# Raspberry Pi OS.
+SupplementaryGroups=audio
+WorkingDirectory=@INSTALL_DIR@
+EnvironmentFile=@INSTALL_DIR@/medic.env
+ExecStart=@INSTALL_DIR@/.venv/bin/python -m medic.ears
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=medic-ears
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

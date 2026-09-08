@@ -1,0 +1,44 @@
+# Project MEDIC — "Hospital Central" dashboard (Flask + SQLite mock DB)
+#
+# This is a TEMPLATE, not a live unit file: the @TOKEN@ placeholders are
+# filled in by ../install.sh (sed) when it copies this to
+# /etc/systemd/system/medic-dashboard.service. Editing the installed copy
+# in /etc/systemd/system/ directly works too, but re-running install.sh
+# will overwrite it from this template again — edit THIS file if the
+# change should stick.
+#
+# Everything else (nav, ears, task_bridge) depends on this being up
+# first — see the After=/Wants= chain in the other three units.
+#
+# BENCH TEST (after ./install.sh has installed it):
+#   sudo systemctl status medic-dashboard.service
+#   curl http://127.0.0.1:5000/
+#   journalctl -u medic-dashboard.service -f
+
+[Unit]
+Description=Project MEDIC - Hospital Central dashboard (Flask + SQLite)
+Documentation=file://@INSTALL_DIR@/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@RUN_USER@
+Group=@RUN_GROUP@
+WorkingDirectory=@INSTALL_DIR@
+EnvironmentFile=@INSTALL_DIR@/medic.env
+# Runs inside the project venv (NOT system python) so it sees the pip
+# packages install.sh put there. Invoked the same way medic/task_bridge.py's
+# own bench-test doc calls it by hand ("python dashboard/app.py") — a plain
+# script path, not `-m dashboard.app` — so systemd, run_all.sh, and manual
+# bench testing all agree on one invocation.
+ExecStart=@INSTALL_DIR@/.venv/bin/python @INSTALL_DIR@/dashboard/app.py
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=medic-dashboard
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

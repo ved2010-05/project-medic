@@ -1,0 +1,36 @@
+# Project MEDIC — pi-deploy/.gitignore
+# Everything generated ON a Pi at install/run time. None of this should
+# ever land in the repo — it's either host-specific, secret-ish (not
+# really secret, but per-robot config), or just build output.
+
+# Python virtual environment (created by install.sh with
+# --system-site-packages — see install.sh's comment for why).
+.venv/
+
+# Python bytecode caches.
+__pycache__/
+*.pyc
+*.pyo
+
+# Real per-device config, generated from medic.env.example by install.sh.
+# Keep the .example file tracked; never the derived file (robot_id and
+# central_url differ per physical robot).
+medic.env
+
+# The mock hospital SQLite DB and any Flask "instance" folder it creates.
+# This is fake data seeded on-device, not something to version.
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+dashboard/instance/
+instance/
+
+# Logs written by hand-run bench sessions (systemd logging goes to
+# journald instead, so this only catches ad-hoc `python nav.py > log`
+# redirects during development).
+*.log
+
+# Editor/OS cruft.
+.DS_Store
+Thumbs.db

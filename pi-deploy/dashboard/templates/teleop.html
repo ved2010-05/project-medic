@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Teleop{% endblock %}
+{% block content %}
+<!--
+  teleop.html — screen 5: teleop panel + sound-threshold slider.
+
+  This is the R14 parachute (Pi-dead -> dashboard drives the robot via the
+  MCU teleop path) AND the live, disclosed supervised-nudge channel used
+  during normal EN_ROUTE driving (ARCHITECTURE.md §2, design doc §9). It
+  must always be usable in a hurry: buttons AND arrow keys, and every nudge
+  the server hands out is logged as a teleop_nudge event by the dashboard
+  itself (docs/http-api-v1.md) — this page just shows the confirmation.
+
+  cmd vocabulary (docs/serial-protocol-v1.md "teleop"): fwd / back / left /
+  right / stop. POST /api/v1/teleop -> {robot_id, cmd, spd} -> {ok, seq}.
+
+  The sound-threshold slider also lives here per the doc ("The sound-
+  threshold slider lives on /teleop"): GET/POST /api/v1/config.
+-->
+<h1>Teleop</h1>
+<p class="muted">
+    Manual drive override — the R14 fallback if the Pi ever goes dark, and the
+    same channel used for a quick supervised nudge during a normal run.
+    Every button press here is sent to <code>/api/v1/teleop</code> and logged.
+</p>
+
+<div class="panel">
+    <div class="teleop-layout">
+        <div id="teleop-pad" class="teleop-pad">
+            <button type="button" class="btn-fwd" data-cmd="fwd" title="Forward (Up arrow)">&#8593;</button>
+            <button type="button" class="btn-left" data-cmd="left" title="Left (Left arrow)">&#8592;</button>
+            <button type="button" class="btn-stop" data-cmd="stop" title="STOP (Space / Esc)">STOP</button>
+            <button type="button" class="btn-right" data-cmd="right" title="Right (Right arrow)">&#8594;</button>
+            <button type="button" class="btn-back" data-cmd="back" title="Back (Down arrow)">&#8595;</button>
+        </div>
+
+        <div class="teleop-side stack">
+            <div>
+                <label for="teleop-robot">Robot</label>
+                <input type="text" id="teleop-robot" list="robot-id-list" placeholder="medic-01">
+            </div>
+            <div>
+                <label for="teleop-speed">Speed (<span id="teleop-speed-readout">0.30</span>)</label>
+                <input type="range" id="teleop-speed" min="0" max="1" step="0.05" value="0.3">
+            </div>
+            <p class="kbd-hint">
+                Keyboard: <kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8592;</kbd> <kbd>&#8594;</kbd>
+                to drive, <kbd>Space</kbd> or <kbd>Esc</kbd> to stop.
+            </p>
+            <div>
+                <div class="muted" style="margin-bottom:4px;">Last command sent</div>
+                <div id="teleop-last" class="teleop-log">No command sent yet this page load.</div>
+            </div>
+            <div>
+                <div class="muted" style="margin-bottom:4px;">Currently queued for the robot</div>
+                <div id="teleop-queued" class="teleop-log">—</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <h2>Sound-alert threshold</h2>
+    <p class="muted">
+        Pushed straight to <code>ears.py</code> on the robot. Higher = only louder
+        sounds trigger an alert.
+    </p>
+    <form id="sound-config-form">
+        <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 320px));">
+            <div>
+                <label for="sound-threshold">Threshold (<span id="sound-threshold-readout">0.00</span>)</label>
+                <input type="range" id="sound-threshold" min="0" max="1" step="0.01" value="0.18">
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit">Apply</button>
+            <span id="sound-config-msg" class="form-msg hidden"></span>
+        </div>
+    </form>
+    <p class="muted" id="sound-config-dump" style="margin-top:10px;">Loading current config…</p>
+</div>
+{% endblock %}

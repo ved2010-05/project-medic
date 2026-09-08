@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+{% block content %}
+<!--
+  audit.html — screen 3: THE PRODUCT.
+
+  Auto-tailing table of every event, newest at the top so it's readable on
+  a projector without scrolling. Uses since_id (GET /api/v1/events) so
+  polling appends new rows instead of refetching the whole log. Filters for
+  kind / severity / robot_id reset the tail (a filter change is a new view,
+  not an append). RED events (docs/http-api-v1.md event-kind table) get a
+  solid red row background — the wrong-patient refusal is demoed on
+  purpose and must be unmissable across a room.
+
+  Kind options below are the exact canonical vocabulary from
+  docs/http-api-v1.md "Event kinds" table — written out here so the filter
+  works even before app.js finishes loading.
+-->
+<h1>Audit log</h1>
+<p class="muted">Every scan, dispense, alert, and command — timestamped, append-only.</p>
+
+<div class="panel">
+    <div class="filter-bar">
+        <div class="field">
+            <label for="audit-kind">Kind</label>
+            <select id="audit-kind">
+                <option value="">All kinds</option>
+                <option value="robot_online">robot_online</option>
+                <option value="robot_offline">robot_offline</option>
+                <option value="dispatch">dispatch</option>
+                <option value="depart">depart</option>
+                <option value="marker_seen">marker_seen</option>
+                <option value="marker_lost">marker_lost</option>
+                <option value="station_mismatch">station_mismatch</option>
+                <option value="arrive">arrive</option>
+                <option value="scan_staff">scan_staff</option>
+                <option value="scan_patient">scan_patient</option>
+                <option value="auth_ok">auth_ok</option>
+                <option value="auth_refused">auth_refused</option>
+                <option value="auth_timeout">auth_timeout</option>
+                <option value="dispense_ok">dispense_ok</option>
+                <option value="dispense_fail">dispense_fail</option>
+                <option value="latch_open">latch_open</option>
+                <option value="latch_close">latch_close</option>
+                <option value="temp_reading">temp_reading</option>
+                <option value="temp_excursion">temp_excursion</option>
+                <option value="sound_alert">sound_alert</option>
+                <option value="obstacle_hold">obstacle_hold</option>
+                <option value="estop">estop</option>
+                <option value="safehold_comms">safehold_comms</option>
+                <option value="teleop_nudge">teleop_nudge</option>
+                <option value="task_complete">task_complete</option>
+            </select>
+        </div>
+        <div class="field">
+            <label for="audit-severity">Severity</label>
+            <select id="audit-severity">
+                <option value="">All severities</option>
+                <option value="info">info</option>
+                <option value="warn">warn</option>
+                <option value="red">red</option>
+            </select>
+        </div>
+        <div class="field">
+            <label for="audit-robot">Robot</label>
+            <input type="text" id="audit-robot" list="robot-id-list" placeholder="All robots">
+        </div>
+        <div class="field">
+            <button type="button" id="audit-pause" class="btn-secondary">Pause</button>
+        </div>
+        <div class="field">
+            <button type="button" id="audit-clear" class="btn-secondary">Clear filters</button>
+        </div>
+    </div>
+
+    <div class="stat-strip">
+        <div class="stat-tile">
+            <div class="num" id="audit-count-total">0</div>
+            <div class="label">Events this view</div>
+        </div>
+        <div class="stat-tile tile-red">
+            <div class="num" id="audit-count-red">0</div>
+            <div class="label">Red events this view</div>
+        </div>
+    </div>
+</div>
+
+<div class="panel panel-flush">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Robot</th>
+                    <th>Severity</th>
+                    <th>Kind</th>
+                    <th>Task</th>
+                    <th>Detail</th>
+                </tr>
+            </thead>
+            <tbody id="audit-body">
+                <tr id="audit-empty-row"><td colspan="6" class="empty-note">Waiting for events…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,79 @@
+# Pip-installed packages for the Project MEDIC Pi bundle (dashboard +
+# medic/*). Installed with:  .venv/bin/pip install -r requirements.txt
+# (install.sh does this for you — this file is documentation as much as
+# it is a manifest).
+#
+# On Raspberry Pi OS, pip is pre-configured to pull ARM wheels from
+# piwheels.org instead of building from source, so this is a fast,
+# no-compiler install — not the multi-hour source build ARM pip installs
+# have a bad reputation for.
+#
+# ---------------------------------------------------------------------
+# NOT listed here because they come from apt instead (see install.sh):
+#   python3-picamera2   — camera driver bindings. APT-ONLY: there is no
+#                         pip wheel for picamera2. This is exactly why
+#                         install.sh creates the venv with
+#                         --system-site-packages — a normal isolated venv
+#                         would never see it and the camera would look
+#                         "silently dead" with no obvious error.
+#   python3-libcamera   — libcamera Python bindings, same reason.
+#   python3-opencv      — preferred over pip for cv2/cv2.aruco: a prebuilt
+#                         apt package avoids a slow/flaky ARM source
+#                         build. install.sh verifies this apt build
+#                         actually ships cv2.aruco (some distro builds
+#                         strip the contrib modules) and only pip installs
+#                         opencv-contrib-python as a fallback if it
+#                         doesn't — see install.sh, not this file.
+#   python3-numpy       — array math. APT, NOT pip. See the long note at the
+#                         bottom of this file: pip installing numpy here is
+#                         what breaks `import cv2` on Trixie.
+#   libcap-dev, portaudio19-dev
+#                       — C libraries these pip packages link against
+#                         (picamera2 and sounddevice respectively), not
+#                         Python packages themselves. NOTE: libatlas-base-dev
+#                         used to be in this list; it does not exist on
+#                         Trixie and has been dropped (libblas3 covers it).
+# ---------------------------------------------------------------------
+
+flask>=3.0,<4            # dashboard web app + REST API (docs/http-api-v1.md)
+pyserial>=3.5,<4          # Pi <-> ESP32 newline-delimited JSON (medic/common.py)
+requests>=2.31,<3         # Pi -> dashboard HTTP client (medic/common.py Central)
+# The ONLY genuinely pip-only dependency: sounddevice is not packaged for
+# Trixie, so this is the one thing that needs working internet. Install it
+# ALONE, never via the whole file, if you are unsure of the network:
+#     .venv/bin/pip install sounddevice
+# Upper bound is <1 (not <0.5) so that command and this manifest agree —
+# current releases are 0.5.x and the InputStream API ears.py uses is unchanged.
+# Blocks ears.py only; dashboard, task_bridge and nav all run without it.
+sounddevice>=0.4.6,<1     # USB mic capture for ears.py (PortAudio bindings)
+
+# numpy is DELIBERATELY NOT LISTED HERE. It comes from apt (python3-numpy),
+# exactly like picamera2/libcamera/opencv above, and pip must never touch it.
+#
+# This file previously pinned `numpy>=1.24,<2`. That pin was correct for
+# Raspberry Pi OS BOOKWORM, whose python3-opencv was built against the numpy
+# 1.x ABI. On TRIXIE (Debian 13) the pin is exactly backwards and actively
+# harmful:
+#
+#     apt ships numpy 2.2.4 and python3-opencv 4.10.0 built against the
+#     numpy 2.x ABI (verified on the robot: numpy resolves to
+#     /usr/lib/python3/dist-packages/numpy, i.e. the SYSTEM copy).
+#
+# Because the venv is created with --system-site-packages, pip does not treat
+# that system numpy 2.2.4 as satisfying "<2" — it goes looking for a 1.x
+# distribution and installs it INSIDE the venv, where it shadows the system
+# copy. cv2 then explodes with:
+#
+#     ImportError: numpy.core.multiarray failed to import
+#
+# ...which looks like a code bug and is not. Leaving numpy unpinned here means
+# `pip install -r requirements.txt` simply leaves the working apt numpy alone.
+#
+# If you ever go back to Bookworm, re-add `numpy>=1.24,<2` AND re-add
+# libatlas-base-dev to install.sh's APT_PACKAGES.
+
+# opencv-contrib-python is a FALLBACK only, installed by install.sh (not by
+# a plain `pip install -r requirements.txt`) and only when apt's
+# python3-opencv turns out to be missing cv2.aruco. It is deliberately not
+# listed as an unconditional dependency here so a normal run doesn't end up
+# with two copies of OpenCV fighting each other.

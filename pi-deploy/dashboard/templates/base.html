@@ -1,0 +1,75 @@
+<!doctype html>
+<!--
+  base.html — shared page shell for the MEDIC "Hospital Central" dashboard.
+
+  Every screen extends this file. It owns:
+    - the <head> (viewport meta for phones, the one stylesheet, favicon-free)
+    - the top nav bar + live connection dot
+    - the offline/stale banner (toggled by app.js, never removed from the DOM)
+    - the single <script src="/static/app.js"> include
+
+  Deliberately asks NOTHING of app.py: no Jinja variables are required to
+  render this page (no expression tags at all, only the block hooks below),
+  so the routes stay as simple as `return render_template("fleet.html")`.
+
+  NOTE: do not write Jinja delimiters literally in this comment. Jinja parses
+  its own syntax INSIDE HTML comments, so an empty expression tag here raises
+  TemplateSyntaxError and takes down every page that extends this file — i.e.
+  the entire dashboard. Describe the tags in words instead.
+  All content is filled in client-side by app.js polling the frozen JSON
+  API in docs/http-api-v1.md. This keeps the frontend and backend agents
+  free to work in parallel without a shared template-context contract.
+
+  Nav links are plain hrefs (not url_for) matching the page list frozen in
+  docs/http-api-v1.md: "/" (fleet), "/dispatch", "/audit", "/temp", "/teleop".
+-->
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+    <title>{% block title %}MEDIC{% endblock %} — Hospital Central</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            MEDIC <span class="tag">Hospital Central</span>
+        </div>
+        <div class="conn-status">
+            <span id="conn-dot" class="conn-dot"></span>
+            <span id="conn-text">Connecting…</span>
+        </div>
+        <nav>
+            <a href="/">Fleet</a>
+            <a href="/dispatch">Dispatch</a>
+            <a href="/audit">Audit</a>
+            <a href="/temp">Cold-box Temp</a>
+            <a href="/teleop">Teleop</a>
+            <a href="/live">Live</a>
+            <a href="/map">Map</a>
+        </nav>
+    </header>
+
+    <!-- Always present in the DOM; app.js toggles the "hidden" class. Never
+         removed, so a demo-day outage can't leave a stale "connected" state
+         on screen forever. -->
+    <div id="offline-banner" class="hidden" role="alert">
+        Dashboard unreachable — showing the last known data. Retrying automatically…
+    </div>
+
+    <!-- Shared robot-id autocomplete list, filled in by app.js from
+         /api/v1/fleet. Pages that need a robot-id text input point their
+         <input list="robot-id-list"> at this. -->
+    <datalist id="robot-id-list" class="robot-id-list"></datalist>
+
+    <main class="page">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        Project MEDIC — candy delivery demo. The robot never decides — it detects, verifies, and alerts.
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

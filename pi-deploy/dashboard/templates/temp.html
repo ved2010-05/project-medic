@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Cold-box Temp{% endblock %}
+{% block content %}
+<!--
+  temp.html — screen 4: cold-box temperature chart.
+
+  Plain <canvas>, hand-drawn in app.js's initTemp() — no charting library
+  (project rule: no CDN, no build step). Pulls GET /api/v1/temp?robot_id=&
+  minutes=, draws the series line, shades excursion bands, and lists
+  min/max/last-reading as big projector-readable numbers above the chart
+  (R6: cold-box temp logged, gap-free; excursions matter more than the
+  exact curve shape from across a room).
+-->
+<h1>Cold-box temperature</h1>
+
+<div class="panel">
+    <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 240px));">
+        <div>
+            <label for="temp-robot">Robot</label>
+            <input type="text" id="temp-robot" list="robot-id-list" placeholder="medic-01">
+        </div>
+        <div>
+            <label for="temp-minutes">Window</label>
+            <select id="temp-minutes">
+                <option value="15">Last 15 minutes</option>
+                <option value="60" selected>Last hour</option>
+                <option value="240">Last 4 hours</option>
+                <option value="1440">Last 24 hours</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="stat-strip" style="margin-top:14px;">
+        <div class="stat-tile">
+            <div class="num" id="temp-min">— °C</div>
+            <div class="label">Min</div>
+        </div>
+        <div class="stat-tile">
+            <div class="num" id="temp-max">— °C</div>
+            <div class="label">Max</div>
+        </div>
+        <div class="stat-tile">
+            <div class="num" id="temp-last">—</div>
+            <div class="label">Last reading</div>
+        </div>
+        <div class="stat-tile tile-red">
+            <div class="num" id="temp-exc-count">0</div>
+            <div class="label">Excursions</div>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="chart-wrap">
+        <canvas id="temp-canvas"></canvas>
+    </div>
+    <p class="muted" style="margin-top:8px;">Shaded band = temperature excursion.</p>
+    <ul class="excursion-list" id="temp-excursion-list"></ul>
+</div>
+{% endblock %}

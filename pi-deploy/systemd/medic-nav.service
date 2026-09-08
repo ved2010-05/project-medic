@@ -1,0 +1,68 @@
+# Project MEDIC — nav.py (ArUco visual waypoint navigation)
+#
+# TEMPLATE — see medic-dashboard.service's header comment for how the
+# @TOKEN@ placeholders get filled in by ../install.sh.
+#
+# Starts after the dashboard AND the bridge (per pi-deploy's task spec:
+# "dashboard first, then bridge, then nav and ears"). nav.py needs the
+# camera (Picamera2, via the --system-site-packages venv — see
+# ../install.sh) and posts marker_seen/marker_lost/arrive/station_mismatch
+# events straight to the dashboard (docs/http-api-v1.md), independent of
+# task_bridge. It is fine for nav to start and log even with no marker in
+# view and no ESP32 attached — never blocks, never wanders (R15).
+#
+# BENCH TEST (after ./install.sh has installed it):
+#   sudo systemctl status medic-nav.service
+#   journalctl -u medic-nav.service -f
+#   (for interactive marker-homing debugging, stop the service and run
+#   nav.py by hand instead — see README.md "Run by hand for bench testing")
+
+[Unit]
+Description=Project MEDIC - nav (ArUco visual waypoint navigation)
+Documentation=file://@INSTALL_DIR@/README.md
+After=network.target medic-dashboard.service medic-bridge.service
+Wants=medic-dashboard.service medic-bridge.service
+# Never give up permanently on a missing camera. systemd's default start limit
+# (5 restarts / 10 s) would drop this unit into a terminal 'failed' state, so
+# reseating the CSI ribbon would silently NOT bring nav back and you'd be
+# debugging the wrong thing at the worst possible moment. 0 disables the limit:
+# retry slowly, forever, so the fix is "push the connector in" and nothing else.
+# MUST be in [Unit] — systemd moved it out of [Service] in v229 and ignores it
+# there.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=@RUN_USER@
+Group=@RUN_GROUP@
+# video: /dev/video*, and the libcamera/Picamera2 device nodes, are
+#   group-owned "video" on Raspberry Pi OS.
+# dialout: nav emits drive/search/stop goals, which (per
+#   docs/serial-protocol-v1.md) go out over the same MCU serial link as
+#   task_bridge's messages.
+SupplementaryGroups=video dialout
+WorkingDirectory=@INSTALL_DIR@
+EnvironmentFile=@INSTALL_DIR@/medic.env
+ExecStart=@INSTALL_DIR@/.venv/bin/python -m medic.nav
+Restart=on-failure
+# 20 s, not 3. Two reasons, both measured on this robot:
+#  1. If the camera is absent, nav.py exits immediately and a 3 s retry floods
+#     the journal with the same traceback ~20x/minute, burying the REAL problem.
+#  2. A failed start still costs ~6 s of CPU, because it pays the full
+#     cv2 + picamera2 import before it can even discover there's no camera. At
+#     RestartSec=3 that pegs most of a core forever; at 20 s the duty cycle is
+#     ~25%. That matters precisely when you're stood over a warm Pi trying to
+#     work out why the ribbon won't seat.
+# Still fast enough that reseating the connector recovers before you've walked
+# back to the laptop.
+RestartSec=20
+# NOTE: StartLimitIntervalSec lives in [Unit], NOT here — see the top of this
+# file. systemd moved it out of [Service] in v229 and silently ignores it if
+# you put it in the wrong section.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=medic-nav
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

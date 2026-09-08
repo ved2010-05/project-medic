@@ -1,0 +1,775 @@
+/* style.css — hand-written CSS for the MEDIC "Hospital Central" dashboard.
+   No framework, no CDN, no build step (ARCHITECTURE.md, dashboard task brief).
+
+   Design goals:
+     - Legible on a projector from across a room: big type, high contrast,
+       obvious colours for state/severity.
+     - Legible on a phone too — the dashboard is served from the Pi and
+       someone will pull it up on their phone during the demo.
+     - Never rely on colour alone: every state/severity also has a text
+       label, for anyone colourblind or looking at a washed-out projector.
+*/
+
+/* ----------------------------------------------------------------------
+   0. Reset + design tokens
+   ---------------------------------------------------------------------- */
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    /* Base palette — light theme (default; projectors are usually lit rooms). */
+    --bg: #eef1f4;
+    --panel: #ffffff;
+    --panel-alt: #f5f7f9;
+    --text: #12181f;
+    --muted: #526070;
+    --border: #d6dde3;
+
+    --brand: #0b5fae;
+    --brand-dark: #063e73;
+    --brand-contrast: #ffffff;
+
+    /* Severity / status colours. Used for both text and background pairs. */
+    --info: #1d4ed8;
+    --info-bg: #dce8fd;
+    --warn: #92400e;
+    --warn-bg: #fdedc8;
+    --red: #ffffff;
+    --red-bg: #c81e1e;
+    --red-strong: #a30f0f;
+    --online: #0d7a34;
+    --online-bg: #d9f2e3;
+    --offline: #52606d;
+    --offline-bg: #e3e8ec;
+
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 1px 6px rgba(15, 23, 42, 0.06);
+    --gap: 18px;
+
+    --font: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "Consolas", "SFMono-Regular", Menlo, Monaco, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0f1418;
+        --panel: #1a2129;
+        --panel-alt: #212a33;
+        --text: #eef2f5;
+        --muted: #9fb0bd;
+        --border: #313d47;
+
+        --brand: #2f8ae0;
+        --brand-dark: #16344f;
+        --brand-contrast: #ffffff;
+
+        --info: #7db3ff;
+        --info-bg: #16324f;
+        --warn: #ffcf7a;
+        --warn-bg: #4a3406;
+        --red: #ffffff;
+        --red-bg: #931414;
+        --red-strong: #d92727;
+        --online: #58e08c;
+        --online-bg: #123d24;
+        --offline: #9fb0bd;
+        --offline-bg: #2a333c;
+    }
+}
+
+body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 17px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+    margin: 0 0 0.5em 0;
+    line-height: 1.2;
+}
+
+h1 { font-size: 1.9rem; }
+h2 { font-size: 1.35rem; }
+h3 { font-size: 1.05rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+p { margin: 0 0 0.75em 0; }
+
+a { color: var(--brand); }
+
+/* ----------------------------------------------------------------------
+   1. Top bar + nav
+   ---------------------------------------------------------------------- */
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: var(--brand-dark);
+    color: var(--brand-contrast);
+    padding: 10px 20px;
+    box-shadow: var(--shadow);
+}
+
+.topbar .brand {
+    font-size: 1.3rem;
+    font-weight: 700;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    white-space: nowrap;
+}
+
+.topbar .brand .tag {
+    font-size: 0.85rem;
+    font-weight: 400;
+    opacity: 0.85;
+}
+
+.conn-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--muted);
+    margin-right: 6px;
+    vertical-align: middle;
+    flex: none;
+}
+
+.conn-dot.ok { background: #34d058; }
+.conn-dot.stale { background: #e6b800; }
+.conn-dot.down { background: #ff4d4d; }
+
+.conn-status {
+    font-size: 0.85rem;
+    opacity: 0.9;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.topbar nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.topbar nav a {
+    color: var(--brand-contrast);
+    text-decoration: none;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.95rem;
+    opacity: 0.85;
+}
+
+.topbar nav a:hover {
+    background: rgba(255, 255, 255, 0.12);
+    opacity: 1;
+}
+
+.topbar nav a.active {
+    background: rgba(255, 255, 255, 0.22);
+    opacity: 1;
+}
+
+/* ----------------------------------------------------------------------
+   2. Offline / stale banner — must be unmissable, never blocks content.
+   ---------------------------------------------------------------------- */
+#offline-banner {
+    position: sticky;
+    top: 52px;
+    z-index: 19;
+    background: var(--red-bg);
+    color: var(--red);
+    font-weight: 700;
+    padding: 10px 20px;
+    text-align: center;
+    font-size: 0.95rem;
+}
+
+#offline-banner.hidden {
+    display: none;
+}
+
+/* ----------------------------------------------------------------------
+   3. Page shell
+   ---------------------------------------------------------------------- */
+main.page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 20px 20px 60px 20px;
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px 20px;
+    margin-bottom: var(--gap);
+}
+
+.panel-flush {
+    padding: 0;
+    overflow: hidden;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gap);
+}
+
+.row > .panel {
+    flex: 1 1 360px;
+}
+
+.muted { color: var(--muted); }
+
+.stack { display: flex; flex-direction: column; gap: 10px; }
+
+.hidden { display: none !important; }
+
+/* ----------------------------------------------------------------------
+   4. Badges / pills — state, severity, online status
+   ---------------------------------------------------------------------- */
+.badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.badge-info    { background: var(--info-bg);    color: var(--info); }
+.badge-warn    { background: var(--warn-bg);    color: var(--warn); }
+.badge-red     { background: var(--red-bg);     color: var(--red); }
+.badge-online  { background: var(--online-bg);  color: var(--online); }
+.badge-offline { background: var(--offline-bg); color: var(--offline); }
+.badge-neutral { background: var(--panel-alt);  color: var(--muted); border: 1px solid var(--border); }
+
+.badge-red.badge-strong {
+    background: var(--red-strong);
+    color: #fff;
+}
+
+/* ----------------------------------------------------------------------
+   5. Fleet cards
+   ---------------------------------------------------------------------- */
+.fleet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--gap);
+}
+
+.robot-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 6px solid var(--muted);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
+}
+
+.robot-card.is-online { border-left-color: var(--online); }
+.robot-card.is-offline { border-left-color: var(--offline); opacity: 0.75; }
+.robot-card.has-alarm { border-left-color: var(--red-strong); }
+
+.robot-card .robot-id {
+    font-size: 1.3rem;
+    font-weight: 800;
+    margin-bottom: 6px;
+}
+
+.robot-card dl {
+    margin: 10px 0 0 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 10px;
+    font-size: 0.95rem;
+}
+
+.robot-card dt { color: var(--muted); }
+.robot-card dd { margin: 0; font-weight: 600; }
+
+.empty-note {
+    color: var(--muted);
+    font-style: italic;
+    padding: 20px 4px;
+}
+
+/* ----------------------------------------------------------------------
+   6. Forms
+   ---------------------------------------------------------------------- */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px 18px;
+}
+
+label {
+    display: block;
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+    color: var(--muted);
+}
+
+input[type="text"],
+input[type="number"],
+input[type="range"],
+select,
+textarea {
+    width: 100%;
+    font-size: 1.05rem;
+    font-family: var(--font);
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--panel-alt);
+    color: var(--text);
+}
+
+input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+    margin-right: 8px;
+}
+
+.check-row {
+    display: flex;
+    align-items: center;
+    padding-top: 26px;
+}
+
+.check-row label {
+    margin: 0;
+    font-weight: 600;
+    color: var(--text);
+}
+
+button {
+    font-family: var(--font);
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 11px 20px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--brand);
+    color: #fff;
+    cursor: pointer;
+}
+
+button:hover { filter: brightness(1.08); }
+button:active { filter: brightness(0.94); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+button.btn-secondary {
+    background: var(--panel-alt);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+button.btn-danger {
+    background: var(--red-strong);
+    color: #fff;
+}
+
+.form-actions {
+    margin-top: 14px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.form-msg {
+    font-weight: 700;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+}
+
+.form-msg.ok { background: var(--online-bg); color: var(--online); }
+.form-msg.err { background: var(--red-bg); color: var(--red); }
+
+/* ----------------------------------------------------------------------
+   7. Tables (audit log, tasks)
+   ---------------------------------------------------------------------- */
+.table-wrap {
+    overflow-x: auto;
+}
+
+table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+table.data-table caption {
+    caption-side: top;
+    text-align: left;
+    padding: 14px 16px 0 16px;
+}
+
+table.data-table th,
+table.data-table td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+table.data-table td.detail-cell {
+    white-space: normal;
+    min-width: 220px;
+}
+
+table.data-table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--panel-alt);
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    z-index: 1;
+}
+
+table.data-table tbody tr:hover {
+    background: var(--panel-alt);
+}
+
+tr.sev-red {
+    background: var(--red-bg);
+    color: var(--red);
+    font-weight: 700;
+}
+
+tr.sev-red td { border-bottom-color: var(--red-strong); }
+
+tr.sev-warn {
+    background: var(--warn-bg);
+    color: var(--warn);
+}
+
+tr.row-flash {
+    animation: flash-row 1.8s ease-out;
+}
+
+@keyframes flash-row {
+    0%   { box-shadow: inset 0 0 0 999px rgba(255, 255, 0, 0.55); }
+    100% { box-shadow: inset 0 0 0 999px rgba(255, 255, 0, 0); }
+}
+
+/* ----------------------------------------------------------------------
+   8. Filter bar (audit page)
+   ---------------------------------------------------------------------- */
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+    margin-bottom: 4px;
+}
+
+.filter-bar .field {
+    min-width: 160px;
+}
+
+.filter-bar label {
+    margin-bottom: 4px;
+}
+
+.stat-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 10px;
+}
+
+.stat-tile {
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 16px;
+    min-width: 120px;
+}
+
+.stat-tile .num {
+    font-size: 1.4rem;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.stat-tile .label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.stat-tile.tile-red .num { color: var(--red-strong); }
+
+/* ----------------------------------------------------------------------
+   9. Progress list (dispatch live task)
+   ---------------------------------------------------------------------- */
+ol.progress-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+ol.progress-list li {
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+ol.progress-list li.step-done {
+    background: var(--online-bg);
+    color: var(--online);
+    border-color: transparent;
+}
+
+ol.progress-list li.step-current {
+    background: var(--brand);
+    color: #fff;
+    border-color: transparent;
+}
+
+ol.progress-list li.step-bad {
+    background: var(--red-strong);
+    color: #fff;
+    border-color: transparent;
+}
+
+/* ----------------------------------------------------------------------
+   10. Teleop pad
+   ---------------------------------------------------------------------- */
+.teleop-layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 30px;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.teleop-pad {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(84px, 110px));
+    grid-template-rows: repeat(3, minmax(84px, 110px));
+    gap: 10px;
+    justify-content: center;
+}
+
+.teleop-pad button {
+    font-size: 2rem;
+    line-height: 1;
+    padding: 0;
+    border-radius: var(--radius);
+    background: var(--panel-alt);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.teleop-pad button:active,
+.teleop-pad button.pressed {
+    background: var(--brand);
+    color: #fff;
+}
+
+.teleop-pad .btn-fwd   { grid-column: 2; grid-row: 1; }
+.teleop-pad .btn-left  { grid-column: 1; grid-row: 2; }
+.teleop-pad .btn-stop  { grid-column: 2; grid-row: 2; background: var(--red-strong); color: #fff; font-size: 1.1rem; font-weight: 800; border: none; }
+.teleop-pad .btn-right { grid-column: 3; grid-row: 2; }
+.teleop-pad .btn-back  { grid-column: 2; grid-row: 3; }
+
+.teleop-side {
+    min-width: 260px;
+    flex: 1 1 320px;
+}
+
+.speed-readout {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--brand);
+}
+
+.teleop-log {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.kbd-hint {
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+kbd {
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 1px 7px;
+    font-family: var(--font-mono);
+}
+
+/* ----------------------------------------------------------------------
+   11. Temp chart
+   ---------------------------------------------------------------------- */
+.chart-wrap {
+    width: 100%;
+    position: relative;
+}
+
+#temp-canvas {
+    width: 100%;
+    height: 340px;
+    display: block;
+    background: var(--panel-alt);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+
+.excursion-list {
+    margin: 10px 0 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.9rem;
+}
+
+.excursion-list li {
+    background: var(--warn-bg);
+    color: var(--warn);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+}
+
+/* ----------------------------------------------------------------------
+   12. Footer
+   ---------------------------------------------------------------------- */
+footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+    padding: 20px;
+}
+
+/* ----------------------------------------------------------------------
+   13. Small screens (phones) — the dashboard is served from the Pi and
+   someone WILL open it on a phone.
+   ---------------------------------------------------------------------- */
+@media (max-width: 640px) {
+    body { font-size: 16px; }
+    main.page { padding: 14px 12px 40px 12px; }
+    .topbar { padding: 8px 12px; }
+    .topbar .brand { font-size: 1.05rem; }
+    .row { flex-direction: column; }
+    .row > .panel { flex-basis: auto; }
+    table.data-table th, table.data-table td { padding: 7px 8px; font-size: 0.85rem; }
+    .teleop-pad { grid-template-columns: repeat(3, 78px); grid-template-rows: repeat(3, 78px); }
+    .teleop-pad button { font-size: 1.6rem; }
+}
+
+/* ---------------------------------------------------------------------
+   Live console (/live) — the one-page "what is happening right now" view.
+   --------------------------------------------------------------------- */
+.live-strip { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0; }
+.chip {
+    display: flex; gap: .5rem; align-items: baseline;
+    padding: .35rem .7rem; border-radius: 999px;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+    font-size: .95rem; white-space: nowrap;
+}
+.chip b { opacity: .65; font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+.chip.ok   { border-color: #2e7d4f; background: rgba(46,125,79,.18); }
+.chip.warn { border-color: #b8860b; background: rgba(184,134,11,.18); }
+.chip.bad  { border-color: #a83232; background: rgba(168,50,50,.20); }
+
+.live-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 900px) { .live-cols { grid-template-columns: 1fr; } }
+.live-col h2 small { opacity: .55; font-weight: 400; font-size: .8rem; margin-left: .5rem; }
+.live-col .hint { opacity: .7; font-size: .85rem; margin: .2rem 0 .5rem; }
+.live-col label.inline { display: inline-flex; gap: .4rem; align-items: center; font-size: .85rem; opacity: .8; margin-bottom: .5rem; }
+
+/* Monospace log panes. Fixed height + own scrollbar so the page itself never
+   grows unbounded while tailing. */
+.logbox {
+    height: 46vh; min-height: 240px; overflow-y: auto; overflow-x: auto;
+    background: rgba(0,0,0,.30); border: 1px solid rgba(255,255,255,.10);
+    border-radius: 6px; padding: .5rem .6rem;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: .82rem; line-height: 1.45;
+}
+.logline { white-space: pre-wrap; word-break: break-word; padding: 1px 0; }
+.logline.sev-info { opacity: .8; }
+.logline.sev-warn { color: #ffc857; }
+/* Red has to be unmissable across a room on a projector — the wrong-patient
+   refusal is demoed on purpose. */
+.logline.sev-red  { color: #ff6b6b; font-weight: 600; }
+
+/* Camera panel on /live. Fixed aspect box so the layout doesn't jump between
+   "feed" and "no feed" — a page that reflows every time nav restarts is
+   unusable while you're actually debugging nav. */
+.camwrap {
+    position: relative; width: 100%; max-width: 640px;
+    aspect-ratio: 4 / 3; background: #000;
+    border: 1px solid rgba(255,255,255,.12); border-radius: 6px; overflow: hidden;
+}
+.camwrap img {
+    width: 100%; height: 100%; object-fit: contain; display: none;
+    image-rendering: auto;
+}
+.camoff {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center; text-align: center;
+    padding: 1rem; opacity: .65; font-size: .9rem;
+}
+
+/* Marker map (/map) */
+.cmd { background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.10);
+       border-radius:6px; padding:.6rem .8rem; font-family:ui-monospace,Consolas,monospace;
+       font-size:.9rem; overflow-x:auto; }
+.namerow { display:flex; gap:.6rem; align-items:center; flex-wrap:wrap;
+           padding:.5rem 0; border-bottom:1px solid rgba(255,255,255,.07); }
+.namerow input[type=text] { flex:1 1 16rem; min-width:12rem; }
+.routebar { display:flex; gap:.8rem; align-items:end; flex-wrap:wrap; margin-bottom:.6rem; }
+.routebar label { display:flex; flex-direction:column; gap:.25rem; font-size:.85rem; }
+.muted { opacity:.55; }
+.ok  { color:#4ade80; }
+.bad { color:#ff6b6b; }

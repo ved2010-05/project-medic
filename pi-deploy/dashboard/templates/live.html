@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Live — Hospital Central{% endblock %}
+{% block content %}
+
+<h1>Live</h1>
+<p class="sub">
+  Everything at once: hardware presence, service health, the robot's audit
+  trail, and the raw system log. If something isn't working, the answer is on
+  this page.
+</p>
+
+<!-- ── status strip ─────────────────────────────────────────────── -->
+<div class="live-strip" id="live-strip">
+  <div class="chip" id="chip-robot"><b>robot</b><span>…</span></div>
+  <div class="chip" id="chip-state"><b>state</b><span>…</span></div>
+  <div class="chip" id="chip-ovr"><b>override</b><span>…</span></div>
+  <div class="chip" id="chip-mcu"><b>ESP32</b><span>…</span></div>
+  <div class="chip" id="chip-cam"><b>camera</b><span>…</span></div>
+  <div class="chip" id="chip-mic"><b>mic</b><span>…</span></div>
+</div>
+
+<div class="live-strip" id="live-services">
+  <div class="chip" id="svc-dashboard"><b>dashboard</b><span>…</span></div>
+  <div class="chip" id="svc-bridge"><b>bridge</b><span>…</span></div>
+  <div class="chip" id="svc-nav"><b>nav</b><span>…</span></div>
+  <div class="chip" id="svc-ears"><b>ears</b><span>…</span></div>
+</div>
+
+<!-- ── camera ───────────────────────────────────────────────────── -->
+<section class="card">
+  <h2>Camera <small>what nav actually sees</small></h2>
+  <p class="hint">
+    Published by <code>nav.py</code>, not a separate stream — nav owns the
+    camera, so this is the exact frame the ArUco detector ran on, with its
+    overlay. Green box = detected marker, green line = image centre (steer to
+    put the marker on it). <b>Live view only: RAM-backed, never recorded, never
+    written to the SD card.</b>
+  </p>
+  <div class="camwrap">
+    <img id="live-cam" alt="nav camera feed">
+    <div class="camoff" id="live-cam-off">no feed — is <code>medic-nav</code> running?</div>
+  </div>
+  <p class="hint" id="live-cam-status">…</p>
+</section>
+
+<!-- ── the two streams, side by side ────────────────────────────── -->
+<div class="live-cols">
+
+  <section class="card live-col">
+    <h2>Audit trail <small>what the ROBOT did</small></h2>
+    <p class="hint">
+      Scans, dispenses, refusals, marker events, obstacle holds. This is the
+      product — red lines are the ones judges should see.
+    </p>
+    <label class="inline">
+      <input type="checkbox" id="live-red-only"> red &amp; warn only
+    </label>
+    <div class="logbox" id="live-events"></div>
+  </section>
+
+  <section class="card live-col">
+    <h2>System log <small>what the SOFTWARE did</small></h2>
+    <p class="hint">
+      journald for all four services — camera timeouts, tracebacks, serial
+      drops, restarts. The things that never reach the audit trail.
+    </p>
+    <label class="inline">
+      <input type="checkbox" id="live-errors-only"> errors &amp; warnings only
+    </label>
+    <div class="logbox" id="live-syslog"></div>
+  </section>
+
+</div>
+
+<p class="sub" id="live-footer">…</p>
+
+{% endblock %}
