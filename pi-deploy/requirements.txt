@@ -77,3 +77,5 @@ sounddevice>=0.4.6,<1     # USB mic capture for ears.py (PortAudio bindings)
 # python3-opencv turns out to be missing cv2.aruco. It is deliberately not
 # listed as an unconditional dependency here so a normal run doesn't end up
 # with two copies of OpenCV fighting each other.
+pytest>=8,<9              # dashboard API tests (pi-deploy/tests) -- dev only,
+                          # not needed to run the robot

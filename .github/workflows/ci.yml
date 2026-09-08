@@ -1,0 +1,77 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # firmware/src/ is the source of truth; firmware/arduino/medic_fw/ is a
+  # generated copy that exists only because the Arduino IDE insists a sketch
+  # folder contains a .ino named after the folder.
+  #
+  # The failure this guards against is specific and quiet: someone edits the
+  # generated copy, it compiles, it works on the bench, and the next run of
+  # sync-from-src.sh silently overwrites it. The change is gone and the bug it
+  # fixed comes back. Regenerating here and failing on any diff makes that
+  # impossible to miss -- the PR goes red instead.
+  firmware-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Regenerate the Arduino sketch from firmware/src
+        run: bash firmware/arduino/sync-from-src.sh
+
+      - name: Fail if the generated sketch was out of date
+        run: |
+          if ! git diff --quiet --exit-code -- firmware/; then
+            echo "::error::firmware/arduino/medic_fw is out of sync with firmware/src."
+            echo "Someone edited the generated copy, or forgot to run the sync."
+            echo "Fix: edit firmware/src/*, then run"
+            echo "    bash firmware/arduino/sync-from-src.sh"
+            echo "and commit the result. Never edit firmware/arduino/medic_fw directly."
+            echo
+            echo "Files that differ:"
+            git --no-pager diff --stat -- firmware/
+            exit 1
+          fi
+          echo "firmware/arduino/medic_fw matches firmware/src"
+
+      # A sketch folder missing any of these does not open in the Arduino IDE,
+      # which is the whole reason the generated copy exists.
+      - name: Sketch folder is loadable
+        run: |
+          test -f firmware/arduino/medic_fw/medic_fw.ino
+          test -f firmware/arduino/medic_fw/config.h
+          for f in firmware/src/*.h; do
+            test -f "firmware/arduino/medic_fw/$(basename "$f")"
+          done
+          echo "sketch folder is complete"
+
+  dashboard-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install "flask>=3.0,<4" pytest
+
+      # The task state machine ("one task, one decision") and the two-scan
+      # release check. These encode the safety properties the rest of the
+      # project is arranged around, so they are the ones worth a red build.
+      - name: Dashboard API tests
+        working-directory: pi-deploy
+        run: python -m pytest tests -q
