@@ -353,6 +353,8 @@ hospital story does not.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). The license includes an explicit
-"not a medical device" clause, and the MIT warranty disclaimer applies in full:
-this is provided as is, with no fitness for any particular purpose.
+MIT — see [LICENSE](LICENSE). The MIT warranty disclaimer applies in full: this
+is provided as is, with no fitness for any particular purpose.
+
+The "not a medical device" notice is stated separately in
+[DISCLAIMER.md](DISCLAIMER.md), and in full at the top of this file.
